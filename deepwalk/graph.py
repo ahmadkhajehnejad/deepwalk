@@ -279,6 +279,14 @@ def set_weights(file_, G, method_):
     c = float(method_[9:])
     G.edge_weights = dict()
     for v in G.keys():
+      if v not in attr:
+        print(' not exist:', v)
+        attr[v] = -1
+      for u in G[v]:
+        if u not in attr:
+          print(' not exist:', u)
+          attr[u] = -1
+
       tmp = [1 if attr[u] == attr[v] else c for u in G[v]]
       sm = sum(tmp)
       G.edge_weights[v] = [w/sm for w in tmp]
