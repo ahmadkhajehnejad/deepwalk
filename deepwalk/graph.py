@@ -17,6 +17,7 @@ from random import shuffle
 from itertools import product,permutations
 from scipy.io import loadmat
 from scipy.sparse import issparse
+import numpy as np
 
 logger = logging.getLogger("deepwalk")
 
@@ -30,6 +31,7 @@ class Graph(defaultdict):
   """Efficient basic implementation of nx `Graph' â€“ Undirected graphs with self loops"""  
   def __init__(self):
     super(Graph, self).__init__(list)
+    self.edge_weights = None
 
   def nodes(self):
     return self.keys()
@@ -137,7 +139,10 @@ class Graph(defaultdict):
       cur = path[-1]
       if len(G[cur]) > 0:
         if rand.random() >= alpha:
-          path.append(rand.choice(G[cur]))
+          if G.edge_weights is None:
+            path.append(rand.choice(G[cur]))
+          else:
+            path.append(np.random.choice(G[cur], 1, p=G.edge_weights[cur])[0])
         else:
           path.append(path[0])
       else:
@@ -257,6 +262,29 @@ def load_matfile(file_, variable_name="network", undirected=True):
   mat_matrix = mat_varables[variable_name]
 
   return from_numpy(mat_matrix, undirected)
+
+def set_weights(file_, G, method_):
+  if method_ is None:
+    return G
+
+  attr = dict()
+  with open(file_) as f:
+    for l in f:
+      id, a = l.strip().split()
+      id = int(id)
+      a = int(a)
+      attr[id] = a
+
+  if method_.startswith('constant_'):
+    c = float(method_[9:])
+    G.edge_weights = dict()
+    for v in G.keys():
+      tmp = [1 if attr[u] == attr[v] else c for u in G[v]]
+      sm = sum(tmp)
+      G.edge_weights[v] = [w/sm for w in tmp]
+  else:
+    raise Exception('Weighting method "' + str(method_) + '" not supported.')
+  return G
 
 
 def from_networkx(G_input, undirected=True):

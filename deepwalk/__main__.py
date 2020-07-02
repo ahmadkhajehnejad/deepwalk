@@ -57,6 +57,9 @@ def process(args):
   else:
     raise Exception("Unknown file format: '%s'.  Valid formats: 'adjlist', 'edgelist', 'mat'" % args.format)
 
+  if args.weighted is not None:
+      G = graph.set_weights(args.sensitive_attr_file, G, args.weighted)
+
   print("Number of nodes: {}".format(len(G.nodes())))
 
   num_walks = len(G.nodes()) * args.number_walks
@@ -149,6 +152,11 @@ def main():
 
   parser.add_argument('--workers', default=1, type=int,
                       help='Number of parallel processes.')
+
+  parser.add_argument('-w', '--weighted', default=None, help='Put weights on edges.')
+
+  parser.add_argument('-s', '--sensitive-attr-file', help='sensitive attribute vlues file path.')
+
 
 
   args = parser.parse_args()
