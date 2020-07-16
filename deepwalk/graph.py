@@ -19,8 +19,8 @@ from scipy.io import loadmat
 from scipy.sparse import issparse
 import numpy as np
 
-logger = logging.getLogger("deepwalk")
 
+logger = logging.getLogger("deepwalk")
 
 __author__ = "Bryan Perozzi"
 __email__ = "bperozzi@cs.stonybrook.edu"
@@ -278,9 +278,24 @@ def load_matfile(file_, variable_name="network", undirected=True):
 
   return from_numpy(mat_matrix, undirected)
 
+def _expand(G):
+  G_p = {v:[u for u in l] for v,l in G.items()}
+  for v, l in G_p.items():
+    l_1 = [u for u in l if (G.attr[u] == G.attr[v]) and (u != v)]
+    l_2 = [u for u in l if G.attr[u] != G.attr[v]]
+    for u_2 in l_2:
+      tmp = set(G[u_2])
+      tmp.update(l_1)
+      G[u_2] = list(tmp)
+  G.make_consistent()
+
 def set_weights(G, method_):
   if method_ is None:
     return G
+
+  if method_.startswith('expandar_'):
+    _expand(G)
+    method_ = method_[9:]
 
   if method_.startswith('constant_'):
     c = float(method_[9:])
