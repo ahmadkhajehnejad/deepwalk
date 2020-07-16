@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #for c in 50 100 1000; do #2 3 5 7 10; do
 #	for d in 32 64 92 128; do
 #		python deepwalk --format edgelist --input data/rice.links --max-memory-data-size 0 --number-walks 80 --representation-size $d --walk-length 40 --window-size 10 --workers 30 --output data/rice.embeddings_wconstant${c}_d$d --weighted constant_$c --sensitive-attr-file data/rice.attr
@@ -34,8 +33,4 @@ done
 # sample_1000: 0.23002630472183228
 # rice: 1.4505426213145256
 
-=======
-for d in 32 64 92 128; do
-        python deepwalk --format edgelist --input data/rice.links --max-memory-data-size 0 --number-walks 80 --representation-size $d --walk-length 40 --window-size 10 --workers 20 --output data/rice.embeddings_unweighted_d$d # --weighted constant_5 --sensitive-attr-file data/rice.attr
-done
->>>>>>> daeee8490e20a0c947e53b41514bf08f0641aab0
+
