@@ -51,16 +51,20 @@ def process(args):
   if args.format == "adjlist":
     G = graph.load_adjacencylist(args.input, undirected=args.undirected)
   elif args.format == "edgelist":
-    G = graph.load_edgelist(args.input, undirected=args.undirected)
+    G = graph.load_edgelist(args.input, undirected=args.undirected, attr_file_name=args.sensitive_attr_file)
   elif args.format == "mat":
     G = graph.load_matfile(args.input, variable_name=args.matfile_variable_name, undirected=args.undirected)
   else:
     raise Exception("Unknown file format: '%s'.  Valid formats: 'adjlist', 'edgelist', 'mat'" % args.format)
 
-  if args.weighted is not None:
-      G = graph.set_weights(args.sensitive_attr_file, G, args.weighted)
+  if args.heuristic_wrb_for_wbr is not None:
+      wrb, err = graph.compute_heuristic_wrb(G, float(args.heuristic_wrb_for_wbr))
+      print(wrb, err)
+      return
 
-  print("Number of nodes: {}".format(len(G.nodes())))
+
+  if args.weighted is not None:
+      G = graph.set_weights(G, args.weighted)
 
   num_walks = len(G.nodes()) * args.number_walks
 
@@ -155,9 +159,10 @@ def main():
 
   parser.add_argument('-w', '--weighted', default=None, help='Put weights on edges.')
 
-  parser.add_argument('-s', '--sensitive-attr-file', help='sensitive attribute vlues file path.')
+  parser.add_argument('-s', '--sensitive-attr-file', help='sensitive attribute values file path.')
 
-
+  parser.add_argument('-h', '--heuristic-wrb-for-wbr', help='If set to a value, that value is considered for w_br ' +
+                                                            'and w_rb is computed by a heuristic method and returned')
 
   args = parser.parse_args()
   numeric_level = getattr(logging, args.log.upper(), None)

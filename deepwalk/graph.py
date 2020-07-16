@@ -32,6 +32,7 @@ class Graph(defaultdict):
   def __init__(self):
     super(Graph, self).__init__(list)
     self.edge_weights = None
+    self.attr = None
 
   def nodes(self):
     return self.keys()
@@ -242,17 +243,31 @@ def load_adjacencylist(file_, undirected=False, chunksize=10000, unchecked=True)
   return G 
 
 
-def load_edgelist(file_, undirected=True):
+def load_edgelist(file_, undirected=True, attr_file_name=None):
+
   G = Graph()
+
+  if attr_file_name is not None:
+    G.attr = dict()
+    with open(attr_file_name) as f:
+      for l in f:
+        id, a = l.strip().split()
+        id = int(id)
+        a = int(a)
+        if a in [0, 1]:
+          G.attr[id] = a
+
   with open(file_) as f:
     for l in f:
       x, y = l.strip().split()[:2]
       x = int(x)
       y = int(y)
+      if (x not in G.attr) or (y not in G.attr):
+        continue
       G[x].append(y)
       if undirected:
         G[y].append(x)
-  
+
   G.make_consistent()
   return G
 
@@ -263,31 +278,24 @@ def load_matfile(file_, variable_name="network", undirected=True):
 
   return from_numpy(mat_matrix, undirected)
 
-def set_weights(file_, G, method_):
+def set_weights(G, method_):
   if method_ is None:
     return G
-
-  attr = dict()
-  with open(file_) as f:
-    for l in f:
-      id, a = l.strip().split()
-      id = int(id)
-      a = int(a)
-      attr[id] = a
 
   if method_.startswith('constant_'):
     c = float(method_[9:])
     G.edge_weights = dict()
     for v in G.keys():
-      if v not in attr:
-        print(' not exist:', v)
-        attr[v] = -1
-      for u in G[v]:
-        if u not in attr:
-          print(' not exist:', u)
-          attr[u] = -1
-
-      tmp = [1 if attr[u] == attr[v] else c for u in G[v]]
+      tmp = [1 if G.attr[u] == G.attr[v] else c for u in G[v]]
+      sm = sum(tmp)
+      G.edge_weights[v] = [w/sm for w in tmp]
+  elif method_.startswith('rb_'):
+    s_ = method_.split('_')
+    c_rb, c_br = float(s_[1]), float(s_[3])
+    G.edge_weights = dict()
+    for v in G.keys():
+      c = c_rb if G.attr[v] == 1 else c_br
+      tmp = [1. if G.attr[u] == G.attr[v] else c for u in G[v]]
       sm = sum(tmp)
       G.edge_weights[v] = [w/sm for w in tmp]
   else:
@@ -347,3 +355,41 @@ def from_adjlist_unchecked(adjlist):
     return G
 
 
+def compute_heuristic_wrb(G, w_br):
+  r_d_r, r_d_b, b_d_r, b_d_b = [], [], [], []
+  for v in G:
+    d_r = np.sum([(G.attr[u] == 1) for u in G[v]])
+    d_b = len(G[v]) - d_r
+    if G.attr[v] == 1:
+      r_d_r.append(d_r)
+      r_d_b.append(d_b)
+    else:
+      b_d_r.append(d_r)
+      b_d_b.append(d_b)
+  n_b = np.sum([(G.attr[v] == 0) for v in G])
+
+  def one_step_E(w_rb):
+    return sum([d_b / (d_r * w_br + d_b) for d_r, d_b in zip(b_d_r, b_d_b)]) + \
+           sum([(w_rb * d_b) / (d_r + w_rb * d_b) for d_r, d_b in zip(r_d_r, r_d_b)])
+
+  L = R = 1.
+
+  while one_step_E(R) < n_b:
+    L = R
+    R *= 2
+
+  while one_step_E(L) > n_b:
+    R = L
+    L /= 2
+
+  while True:
+    w_rb = (L + R) / 2
+    err = one_step_E(w_rb) - n_b
+    if abs(err) < 1e-7:
+      break
+    if err > 0:
+      R = w_rb
+    else:
+      L = w_rb
+
+  return w_rb, err
