@@ -142,6 +142,19 @@ class Graph(defaultdict):
         if rand.random() >= alpha:
           if G.edge_weights is None:
             path.append(rand.choice(G[cur]))
+          elif isinstance(G.edge_weights, str) and (G.edge_weights.startswith('prb_')):
+            tmp = G.edge_weights.split('_')
+            p_rb, p_br = float(tmp[1]), float(tmp[3])
+            l_1 = [u for u in G[cur] if G.attr[u] == G.attr[cur]]
+            l_2 = [u for u in G[cur] if G.attr[u] != G.attr[cur]]
+            if (len(l_1) == 0) or (len(l_2) == 0):
+              path.append(rand.choice(G[cur]))
+            else:
+              p = p_rb if G.attr[cur] == 1 else p_br
+              if np.random.rand() < p:
+                path.append(rand.choice(l_2))
+              else:
+                path.append(rand.choice(l_1))
           else:
             path.append(np.random.choice(G[cur], 1, p=G.edge_weights[cur])[0])
         else:
@@ -291,6 +304,10 @@ def _expand(G):
 
 def set_weights(G, method_):
   if method_ is None:
+    return G
+
+  if method_.startswith('prb_'):
+    G.edge_weights = method_
     return G
 
   if method_.startswith('expandar_'):
