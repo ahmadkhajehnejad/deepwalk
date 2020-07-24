@@ -422,7 +422,6 @@ def set_weights(G, method_):
       if t > 0:
         print('     level inf:', t)
     # print([d for v,d in G.border_distance.items() if G.attr[v] == 1])
-    asdlfkjasd
     return G
 
   if method_.startswith('constant_'):
