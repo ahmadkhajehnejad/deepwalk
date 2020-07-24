@@ -33,6 +33,8 @@ class Graph(defaultdict):
     super(Graph, self).__init__(list)
     self.edge_weights = None
     self.attr = None
+    # self.border_score = None
+    self.border_distance = None
 
   def nodes(self):
     return self.keys()
@@ -152,6 +154,21 @@ class Graph(defaultdict):
             else:
               p = p_rb if G.attr[cur] == 1 else p_br
               if np.random.rand() < p:
+                path.append(rand.choice(l_2))
+              else:
+                path.append(rand.choice(l_1))
+          elif isinstance(G.edge_weights, str) and G.edge_weights.startswith('pch_'):
+            p_ch = float(G.edge_weights.split('_')[1])
+            if G.border_distance[cur] == 1:
+              l_1 = [u for u in G[cur] if G.attr[u] == G.attr[cur]]
+              l_2 = [u for u in G[cur] if G.attr[u] != G.attr[cur]]
+            else:
+              l_1 = [u for u in G[cur] if G.border_distance[u] >= G.border_distance[cur]]
+              l_2 = [u for u in G[cur] if G.border_distance[u] < G.border_distance[cur]]
+            if (len(l_1) == 0) or (len(l_2) == 0):
+              path.append(rand.choice(G[cur]))
+            else:
+              if np.random.rand() < p_ch:
                 path.append(rand.choice(l_2))
               else:
                 path.append(rand.choice(l_1))
@@ -302,17 +319,111 @@ def _expand(G):
       G[u_2] = list(tmp)
   G.make_consistent()
 
+# def _is_border_node(G, v):
+#   nei = G[v]
+#   return np.any(np.array([G.attr[u] for u in nei]) != G.attr[v])
+#
+# def _compute_random_border_distance(G, v, wl):
+#   if _is_border_node(G, v):
+#     return 0
+#
+#   cur = v
+#   for i in range(1, wl + 1):
+#     cur = np.random.choice(G[cur])
+#     if _is_border_node(cur):
+#       return i
+#
+#   return wl + 1
+#
+#
+# def _compute_border_score(G, v, wl):
+#   return wl + 2 - np.mean([_compute_random_border_distance(G, v, wl) for _ in range(100)])
+
+def _set_colored_border_distnaces(G, color):
+  queue = [v for v in G if G.attr[v] == color]
+  head = 0
+  dis = {v:0 for v in queue}
+  while head < len(queue):
+    cur = queue[head]
+    d_cur = dis[cur]
+    for u in G[cur]:
+      if (G.attr[u] != color) and (u not in dis):
+        queue.append(u)
+        dis[u] = d_cur + 1
+        G.border_distance[u] = d_cur + 1
+    head += 1
+
+def _set_border_distances(G):
+  G.border_distance = dict()
+  _set_colored_border_distnaces(G, 0)
+  _set_colored_border_distnaces(G, 1)
+  for v in G:
+    if v not in G.border_distance:
+      G.border_distance[v] = np.inf
+  return G
+
 def set_weights(G, method_):
   if method_ is None:
     return G
 
-  if method_.startswith('prb_'):
-    G.edge_weights = method_
-    return G
+  if method_.startswith('get_stat'):
+    cnt_rb = cnt_br = cnt_b = cnt_r = 0
+    for v in G.keys():
+      nei = np.array([G.attr[u] for u in G[v]])
+      if nei.size == 0:
+        raise Exception('Solitary node:', v)
+      if np.all( nei == G.attr[v] ):
+        if G.attr[v] == 0:
+          cnt_b += 1
+        elif G.attr[v] == 1:
+          cnt_r += 1
+        else:
+          raise Exception('Bad attr value:', v, G.attr[v])
+      else:
+        if G.attr[v] == 0:
+          cnt_br += 1
+        elif G.attr[v] == 1:
+          cnt_rb += 1
+        else:
+          raise Exception('Bad attr value:', v, G.attr[v])
+    print('cnt_r=', cnt_r)
+    print('cnt_b=', cnt_b)
+    print('cnt_rb=', cnt_rb)
+    print('cnt_br=', cnt_br)
+    khkjhkhkjhkjhk
 
   if method_.startswith('expandar_'):
     _expand(G)
     method_ = method_[9:]
+
+  if method_.startswith('prb_'):
+    G.edge_weights = method_
+    # tmp = method_.split('_')
+    # if len(len(tmp) > 5) and tmp[4] == 'wl':
+    #   wl = int(tmp[5])
+    #   G.border_score = dict()
+    #   for v in G.keys():
+    #     G.border_score[v] = _compute_border_score(G, v, wl)
+    return G
+
+  if method_.startswith('pch_'):
+    G.edge_weights = method_
+    G = _set_border_distances(G)
+    for c, c_i in [('blue', 0), ('red', 1)]:
+      print(c + ' Nodes:')
+      l = 1
+      while True:
+        t = len([v for v in G if ((G.attr[v] == c_i) and (G.border_distance[v] == l))])
+        if t == 0:
+          break
+        print('     level ' + str(l) + ':', t)
+        l += 1
+      t = np.sum(np.isinf([G.border_distance[v] for v in G if G.attr[v] == c_i]))
+      if t > 0:
+        print('     level inf:', t)
+    # print([d for v,d in G.border_distance.items() if G.attr[v] == 1])
+    asdlfkjasd
+    return G
 
   if method_.startswith('constant_'):
     c = float(method_[9:])
