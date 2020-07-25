@@ -172,6 +172,17 @@ class Graph(defaultdict):
                 path.append(rand.choice(l_2))
               else:
                 path.append(rand.choice(l_1))
+          elif isinstance(G.edge_weights, str) and G.edge_weights == 'random':
+            path.append(rand.choice([v for v in G]))
+          elif isinstance(G.edge_weights, str) and G.edge_weights.startswith('smartshortcut'):
+            p_sc = int(G.edge_weights.split('_')[1])
+            if np.random.rand() < p_sc:
+              l_1 = [u for u in G[cur] if G.attr[u] != G.attr[cur]]
+              if len(l_1) == 0:
+                l_1 = [v for v in G if G.attr[v] != G.attr[cur]]
+              path.append(rand.choice(l_1))
+            else:
+              path.append(rand.choice(G[cur]))
           else:
             path.append(np.random.choice(G[cur], 1, p=G.edge_weights[cur])[0])
         else:
@@ -395,6 +406,14 @@ def set_weights(G, method_):
   if method_.startswith('expandar_'):
     _expand(G)
     method_ = method_[9:]
+
+  if method_ == 'random':
+    G.edge_weights = method_
+    return G
+
+  if method_.startswith('smartshortcut_'):
+    G.edge_weights = method_
+    return G
 
   if method_.startswith('prb_'):
     G.edge_weights = method_
