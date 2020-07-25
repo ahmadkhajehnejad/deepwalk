@@ -175,7 +175,7 @@ class Graph(defaultdict):
           elif isinstance(G.edge_weights, str) and G.edge_weights == 'random':
             path.append(rand.choice([v for v in G]))
           elif isinstance(G.edge_weights, str) and G.edge_weights.startswith('smartshortcut'):
-            p_sc = int(G.edge_weights.split('_')[1])
+            p_sc = float(G.edge_weights.split('_')[1])
             if np.random.rand() < p_sc:
               l_1 = [u for u in G[cur] if G.attr[u] != G.attr[cur]]
               if len(l_1) == 0:
