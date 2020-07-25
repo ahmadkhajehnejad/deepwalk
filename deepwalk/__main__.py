@@ -63,7 +63,7 @@ def process(args):
       return
 
 
-  if args.weighted is not None:
+  if (args.weighted is not None) and (args.weighted != 'unweighted'):
       G = graph.set_weights(G, args.weighted)
 
   num_walks = len(G.nodes()) * args.number_walks
