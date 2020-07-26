@@ -351,19 +351,19 @@ def _expand(G):
 # def _compute_border_score(G, v, wl):
 #   return wl + 2 - np.mean([_compute_random_border_distance(G, v, wl) for _ in range(100)])
 
-def _ramdomwalk_colorpulness(G, v, l):
+def _ramdomwalk_colorfulness(G, v, l):
   v_color = G.attr[v]
   cur = v
   res = 0
   for i in range(l):
     cur = np.random.choice(G[cur])
-    print(G.attr[cur])
     if G.attr[cur] != v_color:
       res += 1
   return res / l
 
 def  _node_colorfulness(G, v):
-  res = 0.001 + np.mean([_ramdomwalk_colorpulness(G,v, 20) for _ in range(1000)])
+  # print('!!!!!!!!!!!!', v)
+  res = 0.001 + np.mean([_ramdomwalk_colorfulness(G, v, 20) for _ in range(1000)])
   return (v, res)
 
 def _colorfulness(G):
@@ -373,12 +373,13 @@ def _colorfulness(G):
   #   cfn[v] = _node_colorfulness(G, v)
   # return cfn
 
-  pool = multiprocessing.Pool(multiprocessing.cpu_count())
-  map_results = pool.starmap(_node_colorfulness, [(G, v) for v in G])
-  pool.close()
-  cfn = { k: v for k, v in map_results}
-  print(cfn)
-  asdfkjh
+  # pool = multiprocessing.Pool(multiprocessing.cpu_count())
+  # map_results = pool.starmap(_node_colorfulness, [(G, v) for v in G])
+  map_results = [_node_colorfulness(G, v) for v in G]
+  # pool.close()
+  cfn = {k: v for k, v in map_results}
+  # print(cfn)
+  # asdfkjh
   return cfn
 
 def _set_colored_border_distnaces(G, color):
