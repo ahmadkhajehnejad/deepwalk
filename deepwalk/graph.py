@@ -18,6 +18,7 @@ from itertools import product,permutations
 from scipy.io import loadmat
 from scipy.sparse import issparse
 import numpy as np
+import multiprocessing
 
 
 logger = logging.getLogger("deepwalk")
@@ -350,6 +351,36 @@ def _expand(G):
 # def _compute_border_score(G, v, wl):
 #   return wl + 2 - np.mean([_compute_random_border_distance(G, v, wl) for _ in range(100)])
 
+def _ramdomwalk_colorpulness(G, v, l):
+  v_color = G.attr[v]
+  cur = v
+  res = 0
+  for i in range(l):
+    cur = np.random.choice(G[cur])
+    print(G.attr[cur])
+    if G.attr[cur] != v_color:
+      res += 1
+  return res / l
+
+def  _node_colorfulness(G, v):
+  res = 0.001 + np.mean([_ramdomwalk_colorpulness(G,v, 20) for _ in range(1000)])
+  return (v, res)
+
+def _colorfulness(G):
+  # cfn = dict()
+  # for i, v in enumerate(G):
+  #   print(i, ':')
+  #   cfn[v] = _node_colorfulness(G, v)
+  # return cfn
+
+  pool = multiprocessing.Pool(multiprocessing.cpu_count())
+  map_results = pool.starmap(_node_colorfulness, [(G, v) for v in G])
+  pool.close()
+  cfn = { k: v for k, v in map_results}
+  print(cfn)
+  asdfkjh
+  return cfn
+
 def _set_colored_border_distnaces(G, color):
   queue = [v for v in G if G.attr[v] == color]
   head = 0
@@ -423,6 +454,16 @@ def set_weights(G, method_):
     #   G.border_score = dict()
     #   for v in G.keys():
     #     G.border_score[v] = _compute_border_score(G, v, wl)
+    return G
+
+  if method_ == 'random_walk':
+    cfn = _colorfulness(G)
+    print(cfn)
+    G.edge_weights = dict()
+    for v in G:
+      w_n = [cfn[u] for u in G[v]]
+      sm = sum(w_n)
+      G.edge_weights[v] = [w/sm for w in w_n]
     return G
 
   if method_.startswith('pch_'):
