@@ -138,10 +138,7 @@ class Graph(defaultdict):
     else:
       # Sampling is uniform w.r.t V, and not w.r.t E
       path = [rand.choice(list(G.keys()))]
-
     modified = np.random.rand() < p_modified
-    print('m     ', modified)
-
     while len(path) < path_length:
       cur = path[-1]
       if len(G[cur]) > 0:
