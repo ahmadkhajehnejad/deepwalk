@@ -125,7 +125,7 @@ class Graph(defaultdict):
     "Returns the number of nodes in the graph"
     return self.order()
 
-  def random_walk(self, path_length, alpha=0, rand=random.Random(), start=None):
+  def random_walk(self, path_length, p_modified, alpha=0, rand=random.Random(), start=None):
     """ Returns a truncated random walk.
 
         path_length: Length of the random walk.
@@ -139,11 +139,16 @@ class Graph(defaultdict):
       # Sampling is uniform w.r.t V, and not w.r.t E
       path = [rand.choice(list(G.keys()))]
 
+    modified = np.random.rand() < p_modified
+    print('m     ', modified)
+
     while len(path) < path_length:
       cur = path[-1]
       if len(G[cur]) > 0:
         if rand.random() >= alpha:
-          if G.edge_weights is None:
+          if not modified:
+            path.append(rand.choice(G[cur]))
+          elif G.edge_weights is None:
             path.append(rand.choice(G[cur]))
           elif isinstance(G.edge_weights, str) and (G.edge_weights.startswith('prb_')):
             tmp = G.edge_weights.split('_')
@@ -194,7 +199,7 @@ class Graph(defaultdict):
 
 # TODO add build_walks in here
 
-def build_deepwalk_corpus(G, num_paths, path_length, alpha=0,
+def build_deepwalk_corpus(G, num_paths, path_length, p_modified, alpha=0,
                       rand=random.Random(0)):
   walks = []
 
@@ -203,11 +208,11 @@ def build_deepwalk_corpus(G, num_paths, path_length, alpha=0,
   for cnt in range(num_paths):
     rand.shuffle(nodes)
     for node in nodes:
-      walks.append(G.random_walk(path_length, rand=rand, alpha=alpha, start=node))
+      walks.append(G.random_walk(path_length, p_modified=p_modified, rand=rand, alpha=alpha, start=node))
   
   return walks
 
-def build_deepwalk_corpus_iter(G, num_paths, path_length, alpha=0,
+def build_deepwalk_corpus_iter(G, num_paths, path_length, p_modified, alpha=0,
                       rand=random.Random(0)):
   walks = []
 
@@ -216,7 +221,7 @@ def build_deepwalk_corpus_iter(G, num_paths, path_length, alpha=0,
   for cnt in range(num_paths):
     rand.shuffle(nodes)
     for node in nodes:
-      yield G.random_walk(path_length, rand=rand, alpha=alpha, start=node)
+      yield G.random_walk(path_length, p_modified=p_modified, rand=rand, alpha=alpha, start=node)
 
 
 def clique(size):
@@ -459,7 +464,6 @@ def set_weights(G, method_):
 
   if method_ == 'random_walk':
     cfn = _colorfulness(G)
-    print(cfn)
     G.edge_weights = dict()
     for v in G:
       w_n = [cfn[u] for u in G[v]]
