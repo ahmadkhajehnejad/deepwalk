@@ -363,12 +363,12 @@ def _ramdomwalk_colorfulness(G, v, l):
       res += 1
   return res / l
 
-def  _node_colorfulness(G, v):
+def  _node_colorfulness(G, v, l):
   # print('!!!!!!!!!!!!', v)
-  res = 0.001 + np.mean([_ramdomwalk_colorfulness(G, v, 20) for _ in range(1000)])
+  res = 0.001 + np.mean([_ramdomwalk_colorfulness(G, v, l) for _ in range(1000)])
   return (v, res)
 
-def _colorfulness(G):
+def _colorfulness(G, l):
   # cfn = dict()
   # for i, v in enumerate(G):
   #   print(i, ':')
@@ -377,7 +377,7 @@ def _colorfulness(G):
 
   # pool = multiprocessing.Pool(multiprocessing.cpu_count())
   # map_results = pool.starmap(_node_colorfulness, [(G, v) for v in G])
-  map_results = [_node_colorfulness(G, v) for v in G]
+  map_results = [_node_colorfulness(G, v, l) for v in G]
   # pool.close()
   cfn = {k: v for k, v in map_results}
   # print(cfn)
@@ -460,7 +460,8 @@ def set_weights(G, method_):
     return G
 
   if method_ == 'random_walk':
-    cfn = _colorfulness(G)
+    l = int(method_.split('_')[2])
+    cfn = _colorfulness(G, l)
     G.edge_weights = dict()
     for v in G:
       w_n = [cfn[u] for u in G[v]]
