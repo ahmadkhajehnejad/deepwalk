@@ -459,7 +459,7 @@ def set_weights(G, method_):
     #     G.border_score[v] = _compute_border_score(G, v, wl)
     return G
 
-  if method_ == 'random_walk':
+  if method_.startswith('random_walk'):
     l = int(method_.split('_')[2])
     cfn = _colorfulness(G, l)
     G.edge_weights = dict()
