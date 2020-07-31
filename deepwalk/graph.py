@@ -363,8 +363,13 @@ def _ramdomwalk_colorfulness(G, v, l):
       res += 1
   return res / l
 
+# cnt_clrf = 0
+
 def  _node_colorfulness(G, v, l):
-  # print('!!!!!!!!!!!!', v)
+  # global cnt_clrf
+  # if np.mod(cnt_clrf, 100) == 0:
+  #   print('cnt_clrf:', cnt_clrf)
+  # cnt_clrf += 1
   res = 0.001 + np.mean([_ramdomwalk_colorfulness(G, v, l) for _ in range(1000)])
   return (v, res)
 
@@ -460,13 +465,31 @@ def set_weights(G, method_):
     return G
 
   if method_.startswith('random_walk'):
-    l = int(method_.split('_')[2])
+    s_method = method_.split('_')
+    l = int(s_method[2])
+    assert( (s_method[3] == 'bndry') and (s_method[5] == 'exp'))
+    p_bndry = float(s_method[4])
+    exp_ = float(s_method[6])
     cfn = _colorfulness(G, l)
     G.edge_weights = dict()
     for v in G:
-      w_n = [cfn[u] for u in G[v]]
-      sm = sum(w_n)
-      G.edge_weights[v] = [w/sm for w in w_n]
+      w_n = [cfn[u] ** exp_ for u in G[v]]
+      ind_same = [i for i, u in enumerate(G[v]) if G.attr[u] == G.attr[v]]
+      ind_diff = [i for i, u in enumerate(G[v]) if G.attr[u] != G.attr[v]]
+      if len(ind_same) == 0 or len(ind_diff) == 0:
+        sm = sum(w_n)
+        G.edge_weights[v] = [w/sm for w in w_n]
+      else:
+        w_n_same = [w_n[i] for i in ind_same]
+        w_n_diff = [w_n[i] for i in ind_diff]
+        sm_same = sum(w_n_same)
+        sm_diff = sum(w_n_diff)
+        G.edge_weights[v] = [None for _ in w_n]
+        for i in ind_same:
+          G.edge_weights[v][i] = (1-p_bndry) * w_n[i] / sm_same
+        for i in ind_diff:
+          G.edge_weights[v][i] = p_bndry * w_n[i] / sm_diff
+
     return G
 
   if method_.startswith('pch_'):
