@@ -165,7 +165,7 @@ def main():
 
   parser.add_argument('-h', '--heuristic-wrb-for-wbr', help='If set to a value, that value is considered for w_br ' +
                                                             'and w_rb is computed by a heuristic method and returned')
-  parser.add_argument('--pmodified', default=0., type=float, help='Probability of using the modified graph')
+  parser.add_argument('--pmodified', default=1.0., type=float, help='Probability of using the modified graph')
 
   args = parser.parse_args()
   numeric_level = getattr(logging, args.log.upper(), None)
