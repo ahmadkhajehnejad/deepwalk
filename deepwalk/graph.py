@@ -467,7 +467,7 @@ def set_weights(G, method_):
   if method_.startswith('random_walk'):
     s_method = method_.split('_')
     l = int(s_method[2])
-    assert( (s_method[3] == 'bndry') and (s_method[5] == 'exp'))
+    assert( (s_method[3] in ['bndry', 'revbndry']) and (s_method[5] == 'exp'))
     p_bndry = float(s_method[4])
     exp_ = float(s_method[6])
     cfn = _colorfulness(G, l)
@@ -487,8 +487,13 @@ def set_weights(G, method_):
         G.edge_weights[v] = [None for _ in w_n]
         for i in ind_same:
           G.edge_weights[v][i] = (1-p_bndry) * w_n[i] / sm_same
-        for i in ind_diff:
-          G.edge_weights[v][i] = p_bndry * w_n[i] / sm_diff
+        if (s_method[3] == 'bndry') or (len(ind_diff) == 1):
+          for i in ind_diff:
+            G.edge_weights[v][i] = p_bndry * w_n[i] / sm_diff
+        else:
+          l_diff = len(ind_diff)
+          for i in ind_diff:
+            G.edge_weights[v][i] = p_bndry * (1 - (w_n[i] / sm_diff)) / (l_diff - 1)
 
     return G
 
