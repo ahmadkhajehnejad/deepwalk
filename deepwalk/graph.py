@@ -298,8 +298,10 @@ def load_edgelist(file_, undirected=True, attr_file_name=None):
         id, a = l.strip().split()
         id = int(id)
         a = int(a)
-        if a in [0, 1]:
-          G.attr[id] = a
+        # if a in [0, 1]:
+        G.attr[id] = a
+
+    print('All attributes: ', np.unique(list(G.attr.values())))
 
   with open(file_) as f:
     for l in f:
@@ -472,6 +474,44 @@ def set_weights(G, method_):
     exp_ = float(s_method[6])
     cfn = _colorfulness(G, l)
     G.edge_weights = dict()
+
+    for v in G:
+      nei_colors = np.unique([G.attr[u] for u in G[v]])
+      if nei_colors.size == 0:
+        continue
+      w_n = [cfn[u] ** exp_ for u in G[v]]
+      if nei_colors.size == 1 and nei_colors[0] == G.attr[v]:
+        sm = sum(w_n)
+        G.edge_weights[v] = [w / sm for w in w_n]
+        continue
+      G.edge_weights[v] = [None for _ in w_n]
+      for cl in nei_colors:
+        ind_cl = [i for i, u in enumerate(G[v]) if G.attr[u] == cl]
+        w_n_cl = [w_n[i] for i in ind_cl]
+        sm_cl = sum(w_n_cl)
+        if cl == G.attr[v]:
+          coef = (1 - p_bndry)
+        else:
+          if G.attr[v] in nei_colors:
+            coef = p_bndry / (nei_colors.size - 1)
+          else:
+            coef = 1 / nei_colors.size
+        if (s_method[3] == 'bndry'):
+          for i in ind_cl:
+            G.edge_weights[v][i] = coef * w_n[i] / sm_cl
+        else:
+          for i in ind_cl:
+            G.edge_weights[v][i] = coef * (1 - (w_n[i] / sm_cl)) / (len(ind_cl) - 1)
+
+    for v in G:
+      nei_colors = [G.attr[u] for u in G[v]]
+      w_n = [cfn[u] ** exp_ for u in G[v]]
+      print('\n', G.attr[v])
+      print(nei_colors)
+      print(w_n)
+      print(G.edge_weights[v])
+
+    '''
     for v in G:
       w_n = [cfn[u] ** exp_ for u in G[v]]
       ind_same = [i for i, u in enumerate(G[v]) if G.attr[u] == G.attr[v]]
@@ -494,6 +534,7 @@ def set_weights(G, method_):
           l_diff = len(ind_diff)
           for i in ind_diff:
             G.edge_weights[v][i] = p_bndry * (1 - (w_n[i] / sm_diff)) / (l_diff - 1)
+    '''
 
     return G
 
