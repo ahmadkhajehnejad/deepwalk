@@ -503,6 +503,7 @@ def set_weights(G, method_):
           for i in ind_cl:
             G.edge_weights[v][i] = coef * (1 - (w_n[i] / sm_cl)) / (len(ind_cl) - 1)
 
+    '''
     for v in G:
       nei_colors = [G.attr[u] for u in G[v]]
       w_n = [cfn[u] ** exp_ for u in G[v]]
@@ -510,6 +511,7 @@ def set_weights(G, method_):
       print(nei_colors)
       print(w_n)
       print(G.edge_weights[v])
+    '''
 
     '''
     for v in G:
