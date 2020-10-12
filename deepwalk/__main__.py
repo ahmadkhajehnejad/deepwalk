@@ -47,64 +47,81 @@ def debug(type_, value, tb):
 
 
 def process(args):
+    if args.format == "adjlist":
+        G = graph.load_adjacencylist(args.input, undirected=args.undirected)
+    elif args.format == "edgelist":
+        G = graph.load_edgelist(args.input, undirected=args.undirected, attr_file_name=args.sensitive_attr_file)
+    elif args.format == "mat":
+        G = graph.load_matfile(args.input, variable_name=args.matfile_variable_name, undirected=args.undirected)
+    else:
+        raise Exception("Unknown file format: '%s'.  Valid formats: 'adjlist', 'edgelist', 'mat'" % args.format)
 
-  if args.format == "adjlist":
-    G = graph.load_adjacencylist(args.input, undirected=args.undirected)
-  elif args.format == "edgelist":
-    G = graph.load_edgelist(args.input, undirected=args.undirected, attr_file_name=args.sensitive_attr_file)
-  elif args.format == "mat":
-    G = graph.load_matfile(args.input, variable_name=args.matfile_variable_name, undirected=args.undirected)
-  else:
-    raise Exception("Unknown file format: '%s'.  Valid formats: 'adjlist', 'edgelist', 'mat'" % args.format)
-
-  if args.heuristic_wrb_for_wbr is not None:
-      wrb, err = graph.compute_heuristic_wrb(G, float(args.heuristic_wrb_for_wbr))
-      print(wrb, err)
-      return
+    if args.heuristic_wrb_for_wbr is not None:
+        wrb, err = graph.compute_heuristic_wrb(G, float(args.heuristic_wrb_for_wbr))
+        print(wrb, err)
+        return
 
 
-  if (args.weighted is not None) and (args.weighted != 'unweighted'):
+    if (args.weighted is not None) and (args.weighted != 'unweighted'):
       G = graph.set_weights(G, args.weighted)
 
-  num_walks = len(G.nodes()) * args.number_walks
+    if args.just_write_graph:
+        with open('wgraph.out', 'w') as fout:
+            if args.weighted == 'unweighted':
+                for v in G:
+                    s = len(G[v])
+                    for u in G[v]:
+                        fout.write(str(v), ' ', str(u), ' ', str(1/s))
+            elif args.weighted.startswith('random_walk'):
+                for v in G:
+                    for u, w in zip(G[v], G.edge_weights[v]):
+                        fout.write(str(v), ' ', str(u), ' ', str(w))
+            else:
+                raise Exception('just-write-graph is not supported for this weighting method')
+        return None
 
-  print("Number of walks: {}".format(num_walks))
 
-  data_size = num_walks * args.walk_length
 
-  print("Data size (walks*length): {}".format(data_size))
 
-  if data_size < args.max_memory_data_size:
-    print("Walking...")
-    walks = graph.build_deepwalk_corpus(G, num_paths=args.number_walks,
-                                        path_length=args.walk_length, p_modified=args.pmodified,
-                                        alpha=0, rand=random.Random(args.seed))
-    print("Training...")
-    model = Word2Vec(walks, size=args.representation_size, window=args.window_size, min_count=0, sg=1, hs=1, workers=args.workers)
-  else:
-    print("Data size {} is larger than limit (max-memory-data-size: {}).  Dumping walks to disk.".format(data_size, args.max_memory_data_size))
-    print("Walking...")
+    num_walks = len(G.nodes()) * args.number_walks
 
-    walks_filebase = args.output + ".walks"
-    walk_files = serialized_walks.write_walks_to_disk(G, walks_filebase, num_paths=args.number_walks,
-                                         path_length=args.walk_length, p_modified=args.pmodified,
-                                         alpha=0, rand=random.Random(args.seed),
-                                         num_workers=args.workers)
+    print("Number of walks: {}".format(num_walks))
 
-    print("Counting vertex frequency...")
-    if not args.vertex_freq_degree:
-      vertex_counts = serialized_walks.count_textfiles(walk_files, args.workers)
+    data_size = num_walks * args.walk_length
+
+    print("Data size (walks*length): {}".format(data_size))
+
+    if data_size < args.max_memory_data_size:
+        print("Walking...")
+        walks = graph.build_deepwalk_corpus(G, num_paths=args.number_walks,
+                                            path_length=args.walk_length, p_modified=args.pmodified,
+                                            alpha=0, rand=random.Random(args.seed))
+        print("Training...")
+        model = Word2Vec(walks, size=args.representation_size, window=args.window_size, min_count=0, sg=1, hs=1, workers=args.workers)
     else:
-      # use degree distribution for frequency in tree
-      vertex_counts = G.degree(nodes=G.iterkeys())
+        print("Data size {} is larger than limit (max-memory-data-size: {}).  Dumping walks to disk.".format(data_size, args.max_memory_data_size))
+        print("Walking...")
 
-    print("Training...")
-    walks_corpus = serialized_walks.WalksCorpus(walk_files)
-    model = Skipgram(sentences=walks_corpus, vocabulary_counts=vertex_counts,
-                     size=args.representation_size,
-                     window=args.window_size, min_count=0, trim_rule=None, workers=args.workers)
+        walks_filebase = args.output + ".walks"
+        walk_files = serialized_walks.write_walks_to_disk(G, walks_filebase, num_paths=args.number_walks,
+                                             path_length=args.walk_length, p_modified=args.pmodified,
+                                             alpha=0, rand=random.Random(args.seed),
+                                             num_workers=args.workers)
 
-  model.wv.save_word2vec_format(args.output)
+        print("Counting vertex frequency...")
+        if not args.vertex_freq_degree:
+          vertex_counts = serialized_walks.count_textfiles(walk_files, args.workers)
+        else:
+          # use degree distribution for frequency in tree
+          vertex_counts = G.degree(nodes=G.iterkeys())
+
+        print("Training...")
+        walks_corpus = serialized_walks.WalksCorpus(walk_files)
+        model = Skipgram(sentences=walks_corpus, vocabulary_counts=vertex_counts,
+                         size=args.representation_size,
+                         window=args.window_size, min_count=0, trim_rule=None, workers=args.workers)
+
+      model.wv.save_word2vec_format(args.output)
 
 
 def main():
@@ -166,6 +183,9 @@ def main():
   parser.add_argument('-h', '--heuristic-wrb-for-wbr', help='If set to a value, that value is considered for w_br ' +
                                                             'and w_rb is computed by a heuristic method and returned')
   parser.add_argument('--pmodified', default=1.0, type=float, help='Probability of using the modified graph')
+  parser.add_argument('--just-write-graph',
+                      help='Do not run the deepwalk, just run the preprocessing and write the resutled weighted graph in file wgraph.out',
+                      action='store_true')
 
   args = parser.parse_args()
   numeric_level = getattr(logging, args.log.upper(), None)
