@@ -30,7 +30,7 @@ def main():
         ind = list(range(points[i], points[i+1]))
         sub_data = data[ind, :]
         sim = 0 - pairwise_distances(sub_data, metric="euclidean", n_jobs=args.workers)
-        with open('similarities' + filename + str(points[i]) + '-' + str(points[i + 1]) + ',' + str(points[i]) + '-' + str(
+        with open('similarities/' + filename + '--' + str(points[i]) + '-' + str(points[i + 1]) + ',' + str(points[i]) + '-' + str(
                 points[i + 1]) + '.pkl', 'wb') as f:
             b = points[i + 1] - points[i]
             pickle.dump(sim[0:b, 0:b], f, protocol=4)
@@ -40,14 +40,12 @@ def main():
             ind = list(range(points[i], points[i+1])) + list(range(points[j], points[j+1]))
             sub_data = data[ind, :]
             sim = 0 - pairwise_distances(sub_data, metric="euclidean", n_jobs=args.workers)
-            with open('similarities' + filename + str(points[i]) + '-' + str(points[i+1]) + ',' + str(points[j]) + '-' + str(points[j+1]) + '.pkl', 'wb') as f:
+            with open('similarities/' + filename + '--' + str(points[i]) + '-' + str(points[i+1]) + ',' + str(points[j]) + '-' + str(points[j+1]) + '.pkl', 'wb') as f:
                 b = points[i+1] - points[i]
                 pickle.dump(sim[0:b, b:], f, protocol=4)
 
 
-    with open(filename + '.pkl', 'wb') as f:
-        pickle.dump(sim, f, protocol=4)
 
 if __name__ == '__main__':
 
-    # sys.exit(main())
+    sys.exit(main())
