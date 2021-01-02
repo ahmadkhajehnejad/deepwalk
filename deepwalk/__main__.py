@@ -50,7 +50,9 @@ def process(args):
     if args.format == "adjlist":
         G = graph.load_adjacencylist(args.input, undirected=args.undirected)
     elif args.format == "edgelist":
-        G = graph.load_edgelist(args.input, undirected=args.undirected, attr_file_name=args.sensitive_attr_file)
+        G = graph.load_edgelist(args.input, undirected=args.undirected, attr_file_name=args.sensitive_attr_file, 
+                test_links_ratio=args.test_links, test_links_file=args.test_links_file,
+                train_links_file=args.train_links_file)
     elif args.format == "mat":
         G = graph.load_matfile(args.input, variable_name=args.matfile_variable_name, undirected=args.undirected)
     else:
@@ -71,11 +73,11 @@ def process(args):
                 for v in G:
                     s = len(G[v])
                     for u in G[v]:
-                        fout.write(str(v), ' ', str(u), ' ', str(1/s))
+                        fout.write(str(v) + ' ' + str(u) + ' ' + str(1/s) + '\n')
             elif args.weighted.startswith('random_walk'):
                 for v in G:
                     for u, w in zip(G[v], G.edge_weights[v]):
-                        fout.write(str(v), ' ', str(u), ' ', str(w))
+                        fout.write(str(v) + ' ' + str(u) + ' ' + str(w) + '\n')
             else:
                 raise Exception('just-write-graph is not supported for this weighting method')
         return None
@@ -121,7 +123,7 @@ def process(args):
                          size=args.representation_size,
                          window=args.window_size, min_count=0, trim_rule=None, workers=args.workers)
 
-      model.wv.save_word2vec_format(args.output)
+    model.wv.save_word2vec_format(args.output)
 
 
 def main():
@@ -186,6 +188,9 @@ def main():
   parser.add_argument('--just-write-graph',
                       help='Do not run the deepwalk, just run the preprocessing and write the resutled weighted graph in file wgraph.out',
                       action='store_true')
+  parser.add_argument('--test-links', type=float, default=0., help='Portion of connections used as test data in link prediction.')
+  parser.add_argument('--test-links-file', default=None, help='Name of the file of the test links')
+  parser.add_argument('--train-links-file', default=None, help='Name of the file of the train links')
 
   args = parser.parse_args()
   numeric_level = getattr(logging, args.log.upper(), None)

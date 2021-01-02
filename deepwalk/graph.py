@@ -19,6 +19,7 @@ from scipy.io import loadmat
 from scipy.sparse import issparse
 import numpy as np
 import multiprocessing
+import pickle
 
 
 logger = logging.getLogger("deepwalk")
@@ -287,7 +288,7 @@ def load_adjacencylist(file_, undirected=False, chunksize=10000, unchecked=True)
   return G 
 
 
-def load_edgelist(file_, undirected=True, attr_file_name=None):
+def load_edgelist(file_, undirected=True, attr_file_name=None, test_links_ratio=0., test_links_file=None, train_links_file=None):
 
   G = Graph()
 
@@ -303,16 +304,66 @@ def load_edgelist(file_, undirected=True, attr_file_name=None):
 
     print('All attributes: ', np.unique(list(G.attr.values())))
 
-  with open(file_) as f:
-    for l in f:
-      x, y = l.strip().split()[:2]
-      x = int(x)
-      y = int(y)
-      if (x not in G.attr) or (y not in G.attr):
-        continue
-      G[x].append(y)
-      if undirected:
-        G[y].append(x)
+  if (test_links_file is not None) and (train_links_file is not None) and path.isfile(test_links_file) and path.isfile(train_links_file):
+    with open(train_links_file, 'rb') as fin:
+        train_links = pickle.load(fin)
+    for l in train_links:
+        if l[4] == 1:
+            G[l[0]].append(l[1])
+            if undirected:
+                G[l[1]].append(l[0])
+  else:
+    pos_test_links = []
+    pos_train_links = []
+
+    with open(file_) as f:
+        for l in f:
+            x, y = l.strip().split()[:2]
+            x = int(x)
+            y = int(y)
+            if (x not in G.attr) or (y not in G.attr):
+                continue
+            if np.random.rand() < test_links_ratio:
+                pos_test_links.append([x, y, G.attr[x], G.attr[y], 1])
+            else:
+                G[x].append(y)
+                if undirected:
+                    G[y].append(x)
+                pos_train_links.append([x, y, G.attr[x], G.attr[y], 1])
+
+    if train_links_file is not None and test_links_file is not None:
+        mark_pos_links = set([(l[0],l[1]) for l in pos_train_links + pos_test_links])
+        mark_neg_links = set()
+
+        neg_test_links = []
+        for l in pos_test_links:
+            while True:
+                x = np.random.choice([v for v in G if G.attr[v] == l[2]])
+                y = np.random.choice([v for v in G if v != x and G.attr[v] == l[3]])
+                if ((x,y) not in mark_pos_links) and ((y,x) not in mark_pos_links) and \
+                        ((x,y) not in mark_neg_links) and ((y,x) not in mark_neg_links):
+                    break
+            mark_neg_links.update([(x,y)])
+            neg_test_links.append([x, y, G.attr[x], G.attr[y], 0])
+
+        neg_train_links = []
+        for l in pos_train_links:
+            while True:
+                x = np.random.choice([v for v in G if G.attr[v] == l[2]])
+                y = np.random.choice([v for v in G if v != x and G.attr[v] == l[3]])
+                if ((x,y) not in mark_pos_links) and ((y,x) not in mark_pos_links) and \
+                        ((x,y) not in mark_neg_links) and ((y,x) not in mark_neg_links):
+                    break
+            mark_neg_links.update([(x,y)])
+            neg_train_links.append([x, y, G.attr[x], G.attr[y], 0])
+
+        train_links = pos_train_links + neg_train_links
+        test_links = pos_test_links + neg_test_links
+
+        with open(train_links_file, 'wb') as fout:
+            pickle.dump(train_links, fout)
+        with open(test_links_file, 'wb') as fout:
+            pickle.dump(test_links, fout)
 
   G.make_consistent()
   return G
